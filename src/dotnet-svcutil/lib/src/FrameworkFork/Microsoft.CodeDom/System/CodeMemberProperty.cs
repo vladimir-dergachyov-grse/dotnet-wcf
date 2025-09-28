@@ -30,6 +30,7 @@ namespace Microsoft.CodeDom
         private CodeStatementCollection _setStatements = new CodeStatementCollection();
         private CodeTypeReference _privateImplements = null;
         private CodeTypeReferenceCollection _implementationTypes = null;
+        private CodeExpression _initExpression = null;
 
         /// <devdoc>
         ///    <para>[To be supplied.]</para>
@@ -165,5 +166,27 @@ namespace Microsoft.CodeDom
                 return _parameters;
             }
         }
+
+        /// <devdoc>
+        ///    <para>
+        ///       Gets or sets the initialization expression for the member field.
+        ///    </para>
+        /// </devdoc>
+        public CodeExpression InitExpression
+        {
+            get
+            {
+                return _initExpression;
+            }
+            set
+            {
+                _initExpression = value;
+            }
+        }
+
+        public string GetString { get; set; }
+        public string SetString { get; set; }
+        public bool Nullable { get; set; }
+        public bool Required { get; set; }
     }
 }

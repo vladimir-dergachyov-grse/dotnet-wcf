@@ -26,7 +26,17 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                         new EnsureAdditionalAssemblyReference(),
                         new CreateCallbackImpl((generator.Options & ServiceContractGenerationOptions.TaskBasedAsynchronousMethod) == ServiceContractGenerationOptions.TaskBasedAsynchronousMethod, generator),
                         new AddAsyncOpenClose(), // this one need to run after CreateCallbakImpl which provide name of VerifyCallbackEvents method
-                        new TypeNameFixup()
+                        new TypeNameFixup(),
+                        // Onvif addition
+                        new RemoveConstructorsFromXmlTypeClasses(),
+                        new RemoveSpecifiedPropsFieldsFromXmlTypeClasses(),
+                        new RemoveFieldsFromXmlTypeClasses(),
+                        new RemoveConstructorsFromMessageContracts(),
+                        new ReplaceFieldsByPropsInMessageContracts(),
+                        new AddInitExpressionToProps(),
+                        new FixPropsInXmlTypes(),
+                        new FixPropsInMessageContracts(),
+                        new RemoveOnvifPropertyAttributes()
                     };
 
             // Default behavior: Remove sync methods, so only async methods are generated.

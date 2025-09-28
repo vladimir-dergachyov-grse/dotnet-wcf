@@ -1355,6 +1355,7 @@ namespace Microsoft.Xml.Serialization
             arrayAccessor.Mapping = arrayMapping;
             if (arrayMapping.TypeDesc.IsNullable)
                 arrayAccessor.IsNullable = element.IsNillable;
+            arrayAccessor.IsOptional = element.MinOccurs == 0m;
             arrayAccessor.Form = ElementForm(ns, element);
             return arrayAccessor;
         }

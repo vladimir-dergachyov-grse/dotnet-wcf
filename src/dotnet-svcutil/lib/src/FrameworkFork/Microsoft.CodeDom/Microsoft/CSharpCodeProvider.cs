@@ -2218,7 +2218,23 @@ namespace Microsoft.CSharp
             {
                 OutputVTableModifier(e.Attributes);
             }
-            OutputType(e.Type);
+            if (e.Required)
+            {
+                Output.Write("required ");
+            }
+            {
+                var type = GetTypeOutput(e.Type);
+                if (type.StartsWith("System.Nullable<") && type.EndsWith(">"))
+                {
+                    type = type.Substring("System.Nullable<".Length);
+                    type = type.Substring(0, type.Length - 1);
+                }
+                Output.Write(type);
+            }
+            if (e.Nullable)
+            {
+                Output.Write('?');
+            }
             Output.Write(" ");
 
             if (e.PrivateImplementationType != null && !IsCurrentInterface)
@@ -2238,17 +2254,26 @@ namespace Microsoft.CSharp
                 OutputIdentifier(e.Name);
             }
 
-            OutputStartingBrace();
-            Indent++;
 
             if (e.HasGet)
             {
-                if (IsCurrentInterface || (e.Attributes & MemberAttributes.ScopeMask) == MemberAttributes.Abstract)
+                if (IsCurrentInterface || (e.Attributes & MemberAttributes.ScopeMask) == MemberAttributes.Abstract || (e.GetStatements.Count == 0 && string.IsNullOrEmpty(e.GetString)))
                 {
-                    Output.WriteLine("get;");
+                    Output.Write(" { ");
+                    Output.Write("get; ");
+                }
+                else if (!string.IsNullOrEmpty(e.GetString))
+                {
+                    Output.Write(" { ");
+                    Output.Write("get ");
+                    Output.Write(e.GetString);
+                    Output.Write(' ');
                 }
                 else
                 {
+                    OutputStartingBrace();
+                    Indent++;
+
                     Output.Write("get");
                     OutputStartingBrace();
                     Indent++;
@@ -2259,9 +2284,16 @@ namespace Microsoft.CSharp
             }
             if (e.HasSet)
             {
-                if (IsCurrentInterface || (e.Attributes & MemberAttributes.ScopeMask) == MemberAttributes.Abstract)
+                if (IsCurrentInterface || (e.Attributes & MemberAttributes.ScopeMask) == MemberAttributes.Abstract || (e.SetStatements.Count == 0 && string.IsNullOrEmpty(e.SetString)))
                 {
-                    Output.WriteLine("set;");
+                    Output.Write("set; ");
+                    Output.Write("}");
+                }
+                else if (!string.IsNullOrEmpty(e.SetString))
+                {
+                    Output.Write("set ");
+                    Output.Write(e.SetString);
+                    Output.Write(" }");
                 }
                 else
                 {
@@ -2271,11 +2303,20 @@ namespace Microsoft.CSharp
                     GenerateStatements(e.SetStatements);
                     Indent--;
                     Output.WriteLine("}");
+
+                    Indent--;
+                    Output.Write("}");
                 }
             }
 
-            Indent--;
-            Output.WriteLine("}");
+            if (e.InitExpression != null)
+            {
+                Output.Write(" = ");
+                GenerateExpression(e.InitExpression);
+                Output.Write(";");
+            }
+
+            Output.WriteLine();
         }
 
         private void GenerateSingleFloatValue(Single s)

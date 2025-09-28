@@ -438,28 +438,36 @@ namespace Microsoft.Xml.Serialization
                 }
                 return;
             }
-            if (mapping.TypeDesc.IsMappedType && field != null && defaultValue is string)
+            if (mapping.TypeDesc.IsMappedType && defaultValue is string)
             {
                 SchemaImporterExtension extension = mapping.TypeDesc.ExtendedType.Extension;
                 CodeExpression init = extension.ImportDefaultValue((string)defaultValue, mapping.TypeDesc.FullName);
 
                 if (init != null)
                 {
-                    if (ctor != null)
-                    {
-                        AddInitializationStatement(ctor, field, init);
-                    }
-                    else
-                    {
-                        field.InitExpression = extension.ImportDefaultValue((string)defaultValue, mapping.TypeDesc.FullName);
-                    }
+                    metadata.Add(new CodeAttributeDeclaration("Onvif.Property.InitExpression", new CodeAttributeArgument(init)));
                 }
-                if (comments != null)
+
+                if (field != null)
                 {
-                    DropDefaultAttribute(accessor, comments, mapping.TypeDesc.FullName);
-                    if (init == null)
+                    if (init != null)
                     {
-                        AddWarningComment(comments, string.Format(ResXml.XmlNotKnownDefaultValue, extension.GetType().FullName, attributeName, (string)defaultValue, mapping.TypeName, mapping.Namespace));
+                        if (ctor != null)
+                        {
+                            AddInitializationStatement(ctor, field, init);
+                        }
+                        else
+                        {
+                            field.InitExpression = init;
+                        }
+                    }
+                    if (comments != null)
+                    {
+                        DropDefaultAttribute(accessor, comments, mapping.TypeDesc.FullName);
+                        if (init == null)
+                        {
+                            AddWarningComment(comments, string.Format(ResXml.XmlNotKnownDefaultValue, extension.GetType().FullName, attributeName, (string)defaultValue, mapping.TypeName, mapping.Namespace));
+                        }
                     }
                 }
                 return;
@@ -516,6 +524,11 @@ namespace Microsoft.Xml.Serialization
             else
             {
                 arguments = GetDefaultValueArguments(pm, value, out initExpression);
+            }
+
+            if (initExpression != null)
+            {
+                metadata.Add(new CodeAttributeDeclaration("Onvif.Property.InitExpression", new CodeAttributeArgument(initExpression)));
             }
 
             if (field != null)
@@ -702,6 +715,28 @@ namespace Microsoft.Xml.Serialization
 
         private void AddMemberMetadata(CodeMemberField field, CodeAttributeDeclarationCollection metadata, MemberMapping member, string ns, bool forceUseMemberName, CodeCommentStatementCollection comments, CodeConstructor ctor)
         {
+            if ((member.Accessor ?? member.Attribute) != null)
+            {
+                var elementAccessor = member.Accessor as ElementAccessor;
+                var attributeAccessor = member.Attribute;
+                var accessor = elementAccessor ?? attributeAccessor as Accessor;
+
+                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
+
+                if (member.TypeDesc?.IsValueType == true)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.ValueType"));
+                }
+                if (elementAccessor?.IsNullable == true)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Nillable"));
+                }
+                if (accessor != null && (accessor.Any || accessor.IsOptional))
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
+                }
+            }
+
             if (member.Xmlns != null)
             {
                 CodeAttributeDeclaration attribute = new CodeAttributeDeclaration(typeof(XmlNamespaceDeclarationsAttribute).FullName);
