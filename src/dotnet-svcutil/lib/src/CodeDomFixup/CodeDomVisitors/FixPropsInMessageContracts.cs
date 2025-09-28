@@ -69,6 +69,14 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                         new CodeAttributeDeclaration(typeof(XmlIgnoreAttribute).FullName)
                     };
 
+                    foreach (CodeAttributeDeclaration attr in propSerialized.CustomAttributes)
+                    {
+                        if (attr.Name == typeof(System.ServiceModel.MessageBodyMemberAttribute).FullName)
+                        {
+                            attr.Arguments.Insert(0, new CodeAttributeArgument("Name", new CodePrimitiveExpression(prop.Name)));
+                        }
+                    }
+
                     var propTypeParts = prop.Type.BaseType.Split('.');
                     if (propTypeParts.Length > 0)
                     {
