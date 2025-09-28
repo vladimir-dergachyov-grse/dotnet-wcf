@@ -6,14 +6,13 @@ namespace Microsoft.Xml.Serialization
 {
     using System;
     using System.Collections;
-    using System.IO;
     using System.ComponentModel;
-    using Microsoft.Xml.Schema;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.Reflection;
     using Microsoft.CodeDom;
     using Microsoft.CodeDom.Compiler;
-    using System.Reflection;
-    using System.Globalization;
-    using System.Diagnostics;
+    using Microsoft.Xml.Schema;
     // using System.Security.Permissions;
     using Microsoft.Xml.Serialization.Advanced;
 
@@ -707,7 +706,7 @@ namespace Microsoft.Xml.Serialization
                 bool sameNullable = arrayElement.IsNullable == elementMapping.TypeDesc.IsNullable;
                 bool defaultForm = arrayElement.Form != XmlSchemaForm.Unqualified;
                 if (!sameName || !sameElementType || !sameElementNs || !sameNullable || !defaultForm || nestingLevel > 0)
-                    ExportArrayItem(metadata, sameName ? null : elementName, sameElementNs ? null : arrayElement.Namespace, sameElementType ? null : elementMapping.TypeDesc, elementMapping.TypeDesc, arrayElement.IsNullable, defaultForm ? XmlSchemaForm.None : arrayElement.Form, nestingLevel);
+                    ExportArrayItem(metadata, arrayElement, sameName ? null : elementName, sameElementNs ? null : arrayElement.Namespace, sameElementType ? null : elementMapping.TypeDesc, elementMapping.TypeDesc, arrayElement.IsNullable, defaultForm ? XmlSchemaForm.None : arrayElement.Form, nestingLevel);
                 if (elementMapping is ArrayMapping)
                     ExportArrayElements(metadata, (ArrayMapping)elementMapping, ns, elementTypeDesc.ArrayElementTypeDesc, nestingLevel + 1);
             }
@@ -715,28 +714,7 @@ namespace Microsoft.Xml.Serialization
 
         private void AddMemberMetadata(CodeMemberField field, CodeAttributeDeclarationCollection metadata, MemberMapping member, string ns, bool forceUseMemberName, CodeCommentStatementCollection comments, CodeConstructor ctor)
         {
-            if ((member.Accessor ?? member.Attribute) != null)
-            {
-                var elementAccessor = member.Accessor as ElementAccessor;
-                var attributeAccessor = member.Attribute;
-                var accessor = elementAccessor ?? attributeAccessor as Accessor;
-
-                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
-
-                if (member.TypeDesc?.IsValueType == true)
-                {
-                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.ValueType"));
-                }
-                if (elementAccessor?.IsNullable == true)
-                {
-                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Nillable"));
-                }
-                if (accessor != null && (accessor.Any || accessor.IsOptional))
-                {
-                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
-                }
-            }
-
+            
             if (member.Xmlns != null)
             {
                 CodeAttributeDeclaration attribute = new CodeAttributeDeclaration(typeof(XmlNamespaceDeclarationsAttribute).FullName);
@@ -756,7 +734,7 @@ namespace Microsoft.Xml.Serialization
                     bool sameName = attrName == member.Name && !forceUseMemberName && member.Name != "System";
                     bool sameNs = attribute.Namespace == ns;
                     bool defaultForm = attribute.Form != XmlSchemaForm.Qualified;
-                    ExportAttribute(metadata,
+                    ExportAttribute(metadata, member.Attribute,
                         sameName ? null : attrName,
                         sameNs || defaultForm ? null : attribute.Namespace,
                         sameType ? null : mapping.TypeDesc,
@@ -792,12 +770,12 @@ namespace Microsoft.Xml.Serialization
                         bool sameType = mapping.TypeDesc == member.TypeDesc;
                         ArrayMapping array = (ArrayMapping)mapping;
                         if (!sameName || !sameNs || element.IsNullable || !defaultForm || member.SequenceId != -1)
-                            ExportArray(metadata, sameName ? null : elemName, sameNs ? null : element.Namespace, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
+                            ExportArray(metadata, member.Accessor as ElementAccessor, sameName ? null : elemName, sameNs ? null : element.Namespace, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
                         else if (mapping.TypeDesc.ArrayElementTypeDesc == new TypeScope().GetTypeDesc(typeof(byte)))
                         {
                             // special case for byte[]. It can be a primitive (base64Binary or hexBinary), or it can
                             // be an array of bytes. Our default is primitive; specify [XmlArray] to get array behavior.
-                            ExportArray(metadata, null, null, false, XmlSchemaForm.None, member.SequenceId);
+                            ExportArray(metadata, member.Accessor as ElementAccessor, null, null, false, XmlSchemaForm.None, member.SequenceId);
                         }
                         ExportArrayElements(metadata, array, element.Namespace, member.TypeDesc.ArrayElementTypeDesc, 0);
                     }
@@ -807,7 +785,7 @@ namespace Microsoft.Xml.Serialization
                             (member.TypeDesc.IsArrayLike && mapping.TypeDesc == member.TypeDesc.ArrayElementTypeDesc);
                         if (member.TypeDesc.IsArrayLike)
                             sameName = false;
-                        ExportElement(metadata, sameName ? null : elemName, sameNs ? null : element.Namespace, sameType ? null : mapping.TypeDesc, mapping.TypeDesc, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
+                        ExportElement(metadata, member.Accessor as ElementAccessor, sameName ? null : elemName, sameNs ? null : element.Namespace, sameType ? null : mapping.TypeDesc, mapping.TypeDesc, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
                     }
                     AddDefaultValueAttribute(field, metadata, element.Default, mapping, comments, member.TypeDesc, element, ctor);
                 }
@@ -823,7 +801,7 @@ namespace Microsoft.Xml.Serialization
                         else
                         {
                             bool defaultForm = element.Form != XmlSchemaForm.Unqualified;
-                            ExportElement(metadata, elemName, sameNs ? null : element.Namespace, ((TypeMapping)element.Mapping).TypeDesc, ((TypeMapping)element.Mapping).TypeDesc, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
+                            ExportElement(metadata, element, elemName, sameNs ? null : element.Namespace, ((TypeMapping)element.Mapping).TypeDesc, ((TypeMapping)element.Mapping).TypeDesc, element.IsNullable, defaultForm ? XmlSchemaForm.None : element.Form, member.SequenceId);
                         }
                     }
                 }
@@ -903,24 +881,80 @@ namespace Microsoft.Xml.Serialization
             metadata.Add(attribute);
         }
 
-        private void ExportAttribute(CodeAttributeDeclarationCollection metadata, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, XmlSchemaForm form)
+        private void ExportAttribute(CodeAttributeDeclarationCollection metadata, AttributeAccessor accessor, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, XmlSchemaForm form)
         {
             ExportMetadata(metadata, typeof(XmlAttributeAttribute), name, ns, typeDesc, dataTypeDesc, null, form, 0, -1);
+            if (accessor != null)
+            {
+                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
+
+                if (dataTypeDesc?.IsValueType == true)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.ValueType"));
+                }
+                if (accessor.IsOptional)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
+                }
+            }
         }
 
-        private void ExportArrayItem(CodeAttributeDeclarationCollection metadata, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, bool isNullable, XmlSchemaForm form, int nestingLevel)
+        private void ExportArrayItem(CodeAttributeDeclarationCollection metadata, ElementAccessor accessor, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, bool isNullable, XmlSchemaForm form, int nestingLevel)
         {
             ExportMetadata(metadata, typeof(XmlArrayItemAttribute), name, ns, typeDesc, dataTypeDesc, isNullable ? null : (object)false, form, nestingLevel, -1);
+            if (accessor != null)
+            {
+                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
+
+                if (accessor.IsNullable)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Nillable"));
+                }
+                if (accessor.IsOptional)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
+                }
+            }
         }
 
-        private void ExportElement(CodeAttributeDeclarationCollection metadata, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, bool isNullable, XmlSchemaForm form, int sequenceId)
+        private void ExportElement(CodeAttributeDeclarationCollection metadata, ElementAccessor accessor, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, bool isNullable, XmlSchemaForm form, int sequenceId)
         {
             ExportMetadata(metadata, typeof(XmlElementAttribute), name, ns, typeDesc, dataTypeDesc, isNullable ? (object)true : null, form, 0, sequenceId);
+            if (accessor != null)
+            {
+                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
+
+                if (dataTypeDesc?.IsValueType == true)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.ValueType"));
+                }
+                if (accessor.IsNullable)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Nillable"));
+                }
+                if (accessor.IsOptional)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
+                }
+            }
         }
 
-        private void ExportArray(CodeAttributeDeclarationCollection metadata, string name, string ns, bool isNullable, XmlSchemaForm form, int sequenceId)
+        private void ExportArray(CodeAttributeDeclarationCollection metadata, ElementAccessor accessor, string name, string ns, bool isNullable, XmlSchemaForm form, int sequenceId)
         {
             ExportMetadata(metadata, typeof(XmlArrayAttribute), name, ns, null, null, isNullable ? (object)true : null, form, 0, sequenceId);
+            if (accessor != null)
+            {
+                metadata.Add(new CodeAttributeDeclaration($"Onvif.Property"));
+
+                if (accessor.IsNullable)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Nillable"));
+                }
+                if (accessor.IsOptional)
+                {
+                    metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
+                }
+            }
         }
 
         private void ExportMetadata(CodeAttributeDeclarationCollection metadata, Type attributeType, string name, string ns, TypeDesc typeDesc, TypeDesc dataTypeDesc, object isNullable, XmlSchemaForm form, int nestingLevel, int sequenceId)
@@ -991,11 +1025,13 @@ namespace Microsoft.Xml.Serialization
                 attribute.Arguments.Add(new CodeAttributeArgument("Order", new CodePrimitiveExpression(sequenceId)));
             }
             metadata.Add(attribute);
+            metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
         }
 
         private void ExportAnyAttribute(CodeAttributeDeclarationCollection metadata)
         {
             metadata.Add(new CodeAttributeDeclaration(typeof(XmlAnyAttributeAttribute).FullName));
+            metadata.Add(new CodeAttributeDeclaration($"Onvif.Property.Optional"));
         }
 
         internal override void EnsureTypesExported(Accessor[] accessors, string ns)
