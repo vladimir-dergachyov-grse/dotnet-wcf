@@ -268,41 +268,41 @@ namespace System.ServiceModel.Description
             bool hasTypedMessage = false;
             foreach (CodeParameterDeclarationExpression param in method.Parameters)
             {
-                CodeTypeDeclaration paramTypeDecl = ServiceContractGenerator.NamespaceHelper.GetCodeType(param.Type);
-                if (paramTypeDecl != null)
-                {
-                    hasTypedMessage = true;
-                    CodeVariableReferenceExpression inValue = new CodeVariableReferenceExpression("inValue");
-                    helperMethod.Statements.Add(new CodeVariableDeclarationStatement(param.Type, inValue.VariableName, new CodeObjectCreateExpression(param.Type)));
-                    invokeMethod.Parameters.Add(inValue);
-                    GenerateParameters(helperMethod, paramTypeDecl, inValue, FieldDirection.In);
-                }
-                else
-                {
+                //CodeTypeDeclaration paramTypeDecl = ServiceContractGenerator.NamespaceHelper.GetCodeType(param.Type);
+                //if (paramTypeDecl != null)
+                //{
+                //    hasTypedMessage = true;
+                //    CodeVariableReferenceExpression inValue = new CodeVariableReferenceExpression("inValue");
+                //    helperMethod.Statements.Add(new CodeVariableDeclarationStatement(param.Type, inValue.VariableName, new CodeObjectCreateExpression(param.Type)));
+                //    invokeMethod.Parameters.Add(inValue);
+                //    GenerateParameters(helperMethod, paramTypeDecl, inValue, FieldDirection.In);
+                //}
+                //else
+                //{
                     helperMethod.Parameters.Add(new CodeParameterDeclarationExpression(param.Type, param.Name));
                     invokeMethod.Parameters.Add(new CodeArgumentReferenceExpression(param.Name));
-                }
+                //}
             }
             if (method.ReturnType.BaseType == s_voidTypeRef.BaseType)
                 helperMethod.Statements.Add(invokeMethod);
             else
             {
-                CodeTypeDeclaration returnTypeDecl = ServiceContractGenerator.NamespaceHelper.GetCodeType(method.ReturnType);
-                if (returnTypeDecl != null)
-                {
-                    hasTypedMessage = true;
-                    CodeVariableReferenceExpression outVar = new CodeVariableReferenceExpression("retVal");
+                //CodeTypeDeclaration returnTypeDecl = ServiceContractGenerator.NamespaceHelper.GetCodeType(method.ReturnType);
+                //if (returnTypeDecl != null)
+                //{
+                //    hasTypedMessage = true;
+                //    CodeVariableReferenceExpression outVar = new CodeVariableReferenceExpression("retVal");
 
-                    helperMethod.Statements.Add(new CodeVariableDeclarationStatement(method.ReturnType, outVar.VariableName, invokeMethod));
-                    CodeMethodReturnStatement returnStatement = GenerateParameters(helperMethod, returnTypeDecl, outVar, FieldDirection.Out);
-                    if (returnStatement != null)
-                        helperMethod.Statements.Add(returnStatement);
-                }
-                else
-                {
+                //    helperMethod.Statements.Add(new CodeVariableDeclarationStatement(method.ReturnType, outVar.VariableName, invokeMethod));
+                //    CodeMethodReturnStatement returnStatement = GenerateParameters(helperMethod, returnTypeDecl, outVar, FieldDirection.Out);
+                //    if (returnStatement != null)
+                //        helperMethod.Statements.Add(returnStatement);
+                //}
+                //else
+                //{
                     helperMethod.Statements.Add(new CodeMethodReturnStatement(invokeMethod));
                     helperMethod.ReturnType = method.ReturnType;
-                }
+                //}
             }
             if (hasTypedMessage)
                 method.PrivateImplementationType = ifaceType;
