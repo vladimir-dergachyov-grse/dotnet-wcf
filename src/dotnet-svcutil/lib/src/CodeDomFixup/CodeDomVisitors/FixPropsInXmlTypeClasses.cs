@@ -21,7 +21,8 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                 return;
             }
 
-            for (int i = type.Members.Count; i > 0; --i)
+            var membersCount = type.Members.Count;
+            for (int i = 0; i < membersCount; ++i)
             {
                 var prop = type.Members[i] as CodeMemberProperty;
                 if (prop == null)

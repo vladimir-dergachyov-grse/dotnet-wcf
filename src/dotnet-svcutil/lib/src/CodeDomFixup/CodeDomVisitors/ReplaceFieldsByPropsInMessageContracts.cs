@@ -20,6 +20,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
 
             CollectionHelpers.MapList<CodeMemberField>(type.Members, delegate (CodeMemberField field) { fields.Add(field); return false; }, null);
 
+            fields.Reverse();
             foreach (var field in fields)
             {
                 var prop = new CodeMemberProperty()
