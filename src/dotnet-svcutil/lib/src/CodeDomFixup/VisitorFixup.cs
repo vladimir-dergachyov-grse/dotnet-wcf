@@ -34,7 +34,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                         new RemoveConstructorsFromMessageContracts(),
                         new ReplaceFieldsByPropsInMessageContracts(),
                         new AddInitExpressionToProps(),
-                        new FixPropsInXmlTypes(),
+                        new FixPropsInXmlTypeClasses(),
                         new FixPropsInMessageContracts(),
                         new RemoveOnvifPropertyAttributes()
                     };

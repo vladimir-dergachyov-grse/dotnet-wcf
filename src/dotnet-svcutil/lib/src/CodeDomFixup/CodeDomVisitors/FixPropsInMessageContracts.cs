@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using Microsoft.CodeDom;
 using Microsoft.Xml.Serialization;
 
@@ -10,27 +9,6 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
 {
     internal class FixPropsInMessageContracts : MessageContractVisitor
     {
-        private readonly IReadOnlyDictionary<string, string> _table = new Dictionary<string, string>()
-        {
-            ["System.Boolean"] = "ToBoolean",
-            ["System.Char"] = "ToChar",
-            ["System.SByte"] = "ToSByte",
-            ["System.Byte"] = "ToByte",
-            ["System.Int16"] = "ToInt16",
-            ["System.UInt16"] = "ToUInt16",
-            ["System.Int32"] = "ToInt32",
-            ["System.UInt32"] = "ToUInt32",
-            ["System.Int64"] = "ToInt64",
-            ["System.UInt64"] = "ToUInt64",
-            ["System.Single"] = "ToSingle",
-            ["System.Double"] = "ToDouble",
-            ["System.Decimal"] = "ToDecimal",
-            ["System.TimeSpan"] = "ToTimeSpan",
-            ["System.DateTime"] = "ToDateTime",
-            ["System.DateTimeOffset"] = "ToDateTimeOffset",
-            ["System.Guid"] = "ToGuid",
-        };
-
         public FixPropsInMessageContracts()
         {
         }
@@ -38,8 +16,14 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
         {
             base.VisitAttributedType(type);
 
-            bool fixProp(CodeMemberProperty prop)
+            for (int i = type.Members.Count; i > 0; --i)
             {
+                var prop = type.Members[i] as CodeMemberProperty;
+                if (prop == null)
+                {
+                    continue;
+                }
+
                 bool defaultValue = false;
                 bool optional = false;
                 bool valueType = false;
@@ -95,11 +79,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                         type.Members.Add(propSerialized);
                     }
                 }
-
-                return true;
             }
-
-            CollectionHelpers.MapList<CodeMemberProperty>(type.Members, fixProp, null);
         }
     }
 }

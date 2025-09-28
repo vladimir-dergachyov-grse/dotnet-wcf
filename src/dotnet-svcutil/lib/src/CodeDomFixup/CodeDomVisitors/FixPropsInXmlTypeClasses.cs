@@ -7,17 +7,28 @@ using Microsoft.Xml.Serialization;
 
 namespace Microsoft.Tools.ServiceModel.Svcutil
 {
-    internal class FixPropsInXmlTypes : XmlTypeVisitor
+    internal class FixPropsInXmlTypeClasses : XmlTypeVisitor
     {
-        public FixPropsInXmlTypes()
+        public FixPropsInXmlTypeClasses()
         {
         }
         protected override void VisitAttributedType(CodeTypeDeclaration type)
         {
             base.VisitAttributedType(type);
 
-            bool fixProp(CodeMemberProperty prop)
+            if (!type.IsClass)
             {
+                return;
+            }
+
+            for (int i = type.Members.Count; i > 0; --i)
+            {
+                var prop = type.Members[i] as CodeMemberProperty;
+                if (prop == null)
+                {
+                    continue;
+                }
+
                 bool defaultValue = false;
                 bool optional = false;
                 bool valueType = false;
@@ -63,11 +74,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
 
                     type.Members.Add(propSpecified);
                 }
-
-                return true;
             }
-
-            CollectionHelpers.MapList<CodeMemberProperty>(type.Members, fixProp, null);
         }
     }
 }

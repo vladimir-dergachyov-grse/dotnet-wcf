@@ -11,25 +11,18 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
         public AddInitExpressionToProps()
         {
         }
-        protected override void Visit(CodeTypeDeclaration type)
+        protected override void Visit(CodeMemberProperty prop)
         {
-            base.Visit(type);
+            base.Visit(prop);
 
-            CollectionHelpers.MapList<CodeMemberProperty>(type.Members, TryAddDefaultValueInit, null);
-        }
-
-        private bool TryAddDefaultValueInit(CodeMemberProperty prop)
-        {
             foreach (CodeAttributeDeclaration declaration in prop.CustomAttributes)
             {
                 if (declaration.Name == "Onvif.Property.InitExpression" && declaration.Arguments.Count > 0)
                 {
                     prop.InitExpression = declaration.Arguments[0].Value;
-                    return true;
+                    break;
                 }
             }
-
-            return true;
         }
     }
 }

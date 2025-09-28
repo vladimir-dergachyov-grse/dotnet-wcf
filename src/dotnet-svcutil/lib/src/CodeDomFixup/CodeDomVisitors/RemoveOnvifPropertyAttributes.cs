@@ -15,8 +15,10 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
         {
             base.Visit(member);
 
-            CollectionHelpers.MapList<CodeAttributeDeclaration>(member.CustomAttributes, delegate(CodeAttributeDeclaration attr) { return !attr.Name.StartsWith("Onvif."); }, null);
-            CollectionHelpers.MapList<CodeCommentStatement>(member.Comments, delegate (CodeCommentStatement comment) { return !comment.Comment.Text.Contains("Onvif."); }, null);
+            CollectionHelpers.MapList<CodeAttributeDeclaration>(
+                member.CustomAttributes, delegate(CodeAttributeDeclaration attr) { return !attr.Name.StartsWith("Onvif."); }, null);
+            CollectionHelpers.MapList<CodeCommentStatement>(
+                member.Comments, delegate (CodeCommentStatement comment) { return !comment.Comment.Text.Contains("Onvif."); }, null);
         }
     }
 }
