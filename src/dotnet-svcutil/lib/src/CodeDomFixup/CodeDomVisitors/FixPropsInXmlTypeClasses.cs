@@ -34,6 +34,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                 bool optional = false;
                 bool valueType = false;
                 bool nillable = false;
+                bool attribute = false;
 
                 foreach (CodeAttributeDeclaration declaration in prop.CustomAttributes)
                 {
@@ -51,13 +52,68 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                         case "Onvif.Property.Nillable":
                             nillable = true;
                             break;
+                        case "Microsoft.Xml.Serialization.XmlAttributeAttribute":
+                            attribute = true;
+                            break;
                     }
                 }
 
                 prop.Nullable = !defaultValue && (nillable || optional);
                 prop.Required = !(defaultValue || nillable || optional);
 
-                if (valueType && !defaultValue && !nillable && optional)
+                if (attribute && valueType && !defaultValue && optional)
+                {
+                    var propOriginal = new CodeMemberProperty
+                    {
+                        Type = prop.Type,
+                        Name = $"_{prop.Name}",
+                        HasGet = true,
+                        HasSet = true,
+                        CustomAttributes = prop.CustomAttributes
+                    };
+                    propOriginal.Attributes = (propOriginal.Attributes & ~MemberAttributes.AccessMask) | MemberAttributes.Public;
+
+                    prop.CustomAttributes = new CodeAttributeDeclarationCollection
+                    {
+                        new CodeAttributeDeclaration(typeof(XmlIgnoreAttribute).FullName)
+                    };
+
+                    foreach (CodeAttributeDeclaration attr in propOriginal.CustomAttributes)
+                    {
+                        if (attr.Name == "Microsoft.Xml.Serialization.XmlAttributeAttribute")
+                        {
+                            attr.Arguments.Insert(0, new CodeAttributeArgument("Name", new CodePrimitiveExpression(prop.Name)));
+                        }
+                    }
+
+                    var propTypeParts = prop.Type.BaseType.Split('.');
+                    if (propTypeParts.Length > 0)
+                    {
+                        var propType = propTypeParts[propTypeParts.Length - 1];
+
+                        propOriginal.GetString = $"=> {prop.Name} ?? default;";
+                        propOriginal.SetString = $"=> {prop.Name} = value;";
+
+                        type.Members.Add(propOriginal);
+                    }
+
+                    var propSpecified = new CodeMemberProperty()
+                    {
+                        Type = new CodeTypeReference(typeof(bool)),
+                        Name = $"_{prop.Name}Specified",
+                        HasGet = true,
+                        HasSet = true
+                    };
+
+                    propSpecified.Attributes = (propSpecified.Attributes & ~MemberAttributes.AccessMask) | MemberAttributes.Public;
+                    propSpecified.CustomAttributes.Add(new CodeAttributeDeclaration(typeof(XmlIgnoreAttribute).FullName));
+
+                    propSpecified.GetString = $"=> {prop.Name}.HasValue;";
+                    propSpecified.SetString = $"=> {prop.Name} = value ? {prop.Name} : null;";
+
+                    type.Members.Add(propSpecified);
+                }
+                else if (valueType && !defaultValue && !nillable && optional)
                 {
                     var propSpecified = new CodeMemberProperty()
                     {
