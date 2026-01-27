@@ -82,7 +82,7 @@ namespace Microsoft.Tools.ServiceModel.Svcutil
                     {
                         if (attr.Name == "Microsoft.Xml.Serialization.XmlAttributeAttribute")
                         {
-                            attr.Arguments.Insert(0, new CodeAttributeArgument("Name", new CodePrimitiveExpression(prop.Name)));
+                            attr.Arguments.Insert(0, new CodeAttributeArgument("AttributeName", new CodePrimitiveExpression(prop.Name)));
                         }
                     }
 
